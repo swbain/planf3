@@ -5,11 +5,7 @@
 *.pdf
 *.mov
 
-# Stray raster screenshots dropped at the repo root — but keep curated images
+# Stray raster screenshots dropped at the repo root
 /*.jpg
 /*.jpeg
 /*.png
-
-# Curated images that the README and example plans depend on stay tracked
-!images/
-!specs/

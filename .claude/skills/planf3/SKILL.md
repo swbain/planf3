@@ -8,19 +8,19 @@ argument-hint: "[user-prompt] [questionable]"
 
 ## Purpose
 
-Create a detailed, **HTML-first** implementation plan based on the `USER_PROMPT` variable. The plan is authored as a single self-contained `.html` page so it can be opened in a browser, embed focused images with a synced visual identity, and be created/updated/consumed by the agent trifecta (engineer, team, AI agents). Analyze the request, think through the implementation approach, follow the `## Instructions`, and work through the `## Workflow` to produce the plan from the `## Plan Template`.
+Create a detailed, **HTML-first** implementation plan based on the `USER_PROMPT` variable. The plan is authored as a single self-contained `.html` page so it can be opened in a browser, carry a synced visual identity, and be created/updated/consumed by the agent trifecta (engineer, team, AI agents). Analyze the request, think through the implementation approach, follow the `## Instructions`, and work through the `## Workflow` to produce the plan from the `## Plan Template`.
 
 ## Variables
 
 USER_PROMPT: $1
 QUESTIONABLE: $2 - default false
 PLAN_OUTPUT_DIRECTORY: `specs/`
-PLAN_FILE: `PLAN_OUTPUT_DIRECTORY/<descriptive-kebab-name>.html`
-IMAGES_OUTPUT_DIR: `PLAN_OUTPUT_DIRECTORY/<plan-name>/`
+PLAN_FILE: `PLAN_OUTPUT_DIRECTORY/plan-<descriptive-kebab-name>.html`
 AI_DOCS: `AI_DOCS/`
 APP_DOCS: `APP_DOCS/`
+SKILL_DIR: the directory this `SKILL.md` was loaded from (e.g. `~/.claude/skills/planf3/` when installed globally) — resolve `workflows/` against it, never against the working directory
 IDE: `code`
-BROWSER: `chrome`
+BROWSER: `arc`
 
 ## Instructions
 
@@ -28,20 +28,20 @@ BROWSER: `chrome`
 - Carefully analyze the user's requirements provided in the `USER_PROMPT` variable
 - Think deeply (ultrathink) about the best approach to implement the requested functionality or solve the problem
 - Explore the codebase to understand existing patterns, documentation, previous specs and architecture
+- Ground the plan in the host project's conventions: read the project's `README.md`, `CLAUDE.md`, and `.claude/rules/` when present (in addition to `AI_DOCS`/`APP_DOCS`), and author tasks that honor them — e.g. when the project mandates TDD, order tasks stub → failing test → implement rather than test-last
+- Validation commands must be the project's real quality gates, discovered from `CLAUDE.md` tooling sections, CI config, or existing check tooling — never invented generics
+- Other planning formats living in `PLAN_OUTPUT_DIRECTORY` (e.g. `spec-*.md`) are read-only context: reference them freely, never edit or restyle them
 - The plan is **HTML-first**: produce a single self-contained `.html` document from the `## Plan Template` below
 - The template uses `{{PLACEHOLDER}}` variables — replace EVERY `{{...}}` with real content. Do not leave any `{{}}` token in the final file
 - Blocks marked with `<!-- repeat -->` are repeatable: duplicate them as many times as the plan needs (e.g. one block per phase, task, file, or Q&A entry) and delete the comment markers
 - Keep the document self-contained: all CSS lives in the single `<style>` block; do not link external stylesheets or scripts
-- Maintain a **synced visual identity** between the html styling and the generated images. We want a professional, focused, minimal theme based on the original `USER_PROMPT` that created the plan. The CSS custom properties in `:root` define the palette/typography. Any embedded image must be generated to match this same identity.
-- For every image created keep them professional and focused on one or two primary ideas. Keep text bloat down by minimizing the total number of sets of words requested in the image prompt under 10. The goal is to build images that aid the plan and convey the core information throughout the plan given the section the image was created for. 
-- Build images for professional software engineers to convey exactly what is going to be built. Be sure to center and space images properly. 
-- Embed images via the `{{...IMAGE}}` slots. During Create, leave them as commented placeholders noting the intended subject; the Image Generation workflow fills them later
-- Populate the metadata header (`created`, `modified`, `commits`, `agent`, `session`, back/forward references) — these are updatable across the plan's lifecycle. Every metadata field except `CREATED_ISO` is a comma-separated list that must only ever be appended to — never overwrite or remove existing entries
+- Maintain a **synced visual identity** in the html styling. We want a professional, focused, minimal theme based on the original `USER_PROMPT` that created the plan. The CSS custom properties in `:root` define the palette/typography.
+- Populate the metadata header (`created`, `modified`, `commits`, `branches`, `agent`, `session`, back/forward references) — these are updatable across the plan's lifecycle. Every metadata field except `CREATED_ISO` is a comma-separated list that must only ever be appended to — never overwrite or remove existing entries. `branches` records every git branch the plan was authored on or built from (`git branch --show-current`)
 - If `QUESTIONABLE` is true, actively surface open questions/assumptions in the toggleable Q&A section rather than silently deciding
 - Ensure the plan is detailed enough that another developer (or agent) could follow it to implement the solution
 - Include code examples or pseudo-code where appropriate to clarify complex concepts
 - Consider edge cases, error handling, and scalability concerns
-- Save the complete plan to `PLAN_FILE` using a descriptive kebab-case filename
+- Save the complete plan to `PLAN_FILE` using a descriptive kebab-case filename prefixed with `plan-` (keeps planf3 output distinguishable when `PLAN_OUTPUT_DIRECTORY` is shared with other spec formats)
 
 ## Workflow
 
@@ -56,11 +56,11 @@ Based on the `USER_PROMPT`, select the single best-matching workflow below and r
 
 ### Subworkflow
 
-Called by other workflows rather than selected directly from the `USER_PROMPT`.
+Called by other workflows, or selected directly when the `USER_PROMPT` explicitly asks for them.
 
 | Subworkflow | When it's called | File to read |
 | --- | --- | --- |
-| Image Generation | Invoked by other workflows (e.g. Create Plan) to generate, fill, or regenerate the embedded images in a plan | `workflows/image-generation.md` |
+| Review Plan | Invoked by Create Plan after authoring to critique the plan and gate on a verdict; also selectable directly when the prompt asks to review, critique, or validate an existing plan | `workflows/review-plan.md` |
 
 ## Plan Template
 
@@ -84,6 +84,7 @@ Called by other workflows rather than selected directly from the `USER_PROMPT`.
         <dt>created</dt>      <dd>{{CREATED_ISO}}</dd>
         <dt>modified</dt>     <dd>{{MODIFIED_ISO_LIST}}</dd>
         <dt>commits</dt>      <dd>{{COMMIT_SHA_LIST}}</dd>
+        <dt>branches</dt>     <dd>{{BRANCH_LIST}}</dd>
         <dt>agent name</dt>        <dd>{{AGENT_NAME_LIST}}</dd>
         <dt>session id</dt>      <dd>{{SESSION_ID_LIST}}</dd>
         <dt>back refs</dt>    <dd>{{BACK_REFERENCES}}</dd>
@@ -91,12 +92,6 @@ Called by other workflows rather than selected directly from the `USER_PROMPT`.
       </dl>
     </details>
   </header>
-
-  <!-- Hero image — synced to the :root visual identity. Replace with <img> once generated. -->
-  <figure>
-    <!-- {{HERO_IMAGE: subject describing the plan at a glance}} -->
-    <figcaption>{{HERO_IMAGE_CAPTION}}</figcaption>
-  </figure>
 
   <!-- ===== PURPOSE / PROBLEM / SOLUTION ===== -->
   <section id="purpose">
@@ -107,19 +102,11 @@ Called by other workflows rather than selected directly from the `USER_PROMPT`.
   <section id="problem">
     <h2>Problem</h2>
     <p>{{PROBLEM}}</p>
-    <figure>
-      <!-- {{PROBLEM_IMAGE: subject visualizing the problem this plan addresses}} -->
-      <figcaption>{{PROBLEM_IMAGE_CAPTION}}</figcaption>
-    </figure>
   </section>
 
   <section id="solution">
     <h2>Solution</h2>
     <p>{{SOLUTION}}</p>
-    <figure>
-      <!-- {{SOLUTION_IMAGE: subject visualizing the proposed solution}} -->
-      <figcaption>{{SOLUTION_IMAGE_CAPTION}}</figcaption>
-    </figure>
   </section>
 
   <!-- ===== RELEVANT FILES ===== -->
@@ -149,12 +136,6 @@ Called by other workflows rather than selected directly from the `USER_PROMPT`.
     <div class="phase">
       <h3><code class="status">[]</code> Phase {{PHASE_NUMBER}}: {{PHASE_NAME}}</h3>
       <p>{{PHASE_DESCRIPTION}}</p>
-
-      <!-- Optional focused image for this phase, synced to :root identity -->
-      <figure>
-        <!-- {{PHASE_IMAGE: subject describing this phase's architecture/flow}} -->
-        <figcaption>{{PHASE_IMAGE_CAPTION}}</figcaption>
-      </figure>
 
       <!-- repeat: one <h4> + checklist per task -->
       <h4>{{TASK_NUMBER}}. {{TASK_NAME}}</h4>
@@ -193,11 +174,6 @@ Called by other workflows rather than selected directly from the `USER_PROMPT`.
   <!-- ===== QUESTIONABLES (only include this section if QUESTIONABLE is true) ===== -->
   <section id="questionables">
     <h2>Questionables</h2>
-    <!-- Optional image for this section, synced to :root identity -->
-    <figure>
-      <!-- {{QUESTIONABLES_IMAGE: subject visualizing the key open question/risk}} -->
-      <figcaption>{{QUESTIONABLES_IMAGE_CAPTION}}</figcaption>
-    </figure>
     <!-- repeat: one <details> per questionable decision / assumption / risk -->
     <details>
       <summary>{{QUESTIONABLE}}</summary>
@@ -209,18 +185,13 @@ Called by other workflows rather than selected directly from the `USER_PROMPT`.
   <!-- Open canvas — the planning agent runs free here. There is no fixed shape:
        use whatever HTML best serves the plan (prose, lists, tables, code blocks,
        diagrams, callouts, decision logs, alternatives considered, open threads,
-       links, anything). Embed as many image slots as the plan benefits from. -->
+       links, anything). -->
   <section id="notes">
     <h2>Notes</h2>
     {{NOTES: free-form. Capture anything that helps the trifecta understand, build,
       or extend this plan — context, dependencies (new libraries via `uv add`),
       tradeoffs, rejected approaches, risks, future work, references. Author rich,
       bespoke HTML as needed.}}
-    <!-- repeat: add as many of these image slots as the notes warrant including the image block below -->
-    <figure>
-      <!-- {{NOTES_IMAGE: subject for a note worth visualizing}} -->
-      <figcaption>{{NOTES_IMAGE_CAPTION}}</figcaption>
-    </figure>
   </section>
 
   <!-- ===== AMENDMENTS ===== -->
